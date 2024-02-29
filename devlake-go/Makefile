@@ -101,7 +101,7 @@ ecr-login:
 
 .PHONY: docker-push # Build and push the multi arch Docker Image
 docker-push: docker-build ecr-login
-	echo docker push $(IMAGE)
+	docker push $(IMAGE)
 
 .PHONY: run-api # Run the OpenDORA API
 run-api: build
