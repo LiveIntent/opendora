@@ -11,7 +11,9 @@ LFLAGS ?= -X main.gitsha=${SHA} -X main.compiled=${BUILD_TIME}
 TAG := $(if $(TAG),$(TAG),$(shell git symbolic-ref --short HEAD)-$(SHA))
 
 IMAGE_VERSION ?= $(TAG)
-IMAGE ?= ghcr.io/devoteamnl/opendora/opendora-api:$(IMAGE_VERSION)
+# IMAGE ?= ghcr.io/devoteamnl/opendora/opendora-api:$(IMAGE_VERSION)
+ECR_REPO=410352555042.dkr.ecr.us-east-1.amazonaws.com
+IMAGE = $(ECR_REPO)/opendora-api:$(IMAGE_VERSION)
 
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
@@ -85,19 +87,21 @@ docker-build:
 	@docker buildx create --use --name=crossplat --node=crossplat && \
 	docker buildx build \
 				--label "org.opencontainers.image.source=https://github.com/devoteamnl/opendora" \
-           		--output "type=docker,push=false" \
-           		--tag $(IMAGE) \
-           		.
+				--output "type=docker,push=false" \
+				--tag $(IMAGE) \
+				.
+
+.PHONY: ecr-login
+ecr-login:
+	aws ecr get-login-password \
+			--region us-east-1 \
+		| docker login \
+			--username AWS \
+			--password-stdin $(ECR_REPO)
 
 .PHONY: docker-push # Build and push the multi arch Docker Image
-docker-push:
-	@docker buildx create --use --name=crossplat --node=crossplat && \
-	docker buildx build \
-				--label "org.opencontainers.image.source=https://github.com/devoteamnl/opendora" \
-           		--platform linux/amd64,linux/arm64 \
-           		--output "type=image,push=true" \
-           		--tag $(IMAGE) \
-           		.
+docker-push: docker-build ecr-login
+	docker push $(IMAGE)
 
 .PHONY: run-api # Run the OpenDORA API
 run-api: build
